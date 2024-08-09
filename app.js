@@ -3,6 +3,7 @@ import axios from "axios";
 import NodeCache from "node-cache";
 import cheerio from "cheerio";
 import morgan from "morgan";
+import moment from "moment-timezone";
 const app = express();
 const cache = new NodeCache({ stdTTL: 600 });
 
@@ -84,6 +85,7 @@ app.get("/info", async (req, res) => {
   }
 });
 
+
 app.get("/cheap-price", async (req, res) => {
   const { artist, date } = req.query;
 
@@ -93,17 +95,13 @@ app.get("/cheap-price", async (req, res) => {
 
   let searchDate;
   if (date) {
-    searchDate = new Date(date);
+    searchDate = moment(date).tz("America/New_York").toDate();
     if (isNaN(searchDate.getTime())) {
       return res
         .status(400)
-        .send(
-          "Invalid date format. Please use ISO 8601 format (e.g., '2024-08-09T00:00:00Z')"
-        );
+        .send("Invalid date format. Please use ISO 8601 format (e.g., '2024-08-09T00:00:00Z')");
     }
   }
-
-
 
   try {
     const response = await axios.post(
@@ -114,9 +112,7 @@ app.get("/cheap-price", async (req, res) => {
         searchType: 2,
       }
     );
-    
-    // console.log("Search results: " + JSON.stringify(response.data));
-    
+
     if (
       response.data &&
       response.data.resultsWithMetadata &&
@@ -125,13 +121,13 @@ app.get("/cheap-price", async (req, res) => {
       const topResultGroup = response.data.resultsWithMetadata.find(
         (group) => group.results.desc === "Top Result"
       );
-    
+
       const topPerformerGroup = response.data.resultsWithMetadata.find(
         (group) => group.results.desc === "Performers"
       );
-    
+
       let topResult;
-    
+
       if (
         topResultGroup &&
         topResultGroup.results.results &&
@@ -146,13 +142,10 @@ app.get("/cheap-price", async (req, res) => {
         topResult = topPerformerGroup.results.results[0];
       }
       const url = `https://www.stubhub.com${topResult.url}`;
-      // console.log(`Fetching additional data from: ${url}`);
-
 
       const htmlResponse = await axios.get(url);
       const $ = cheerio.load(htmlResponse.data);
       const scriptContent = $("script#index-data").html().trim();
-
       if (scriptContent) {
         let parsedData;
         try {
@@ -164,7 +157,6 @@ app.get("/cheap-price", async (req, res) => {
             .send("Failed to parse JSON from script content");
         }
 
-
         const cleanData = cleanJson(parsedData);
 
         let allEvents = [];
@@ -175,34 +167,31 @@ app.get("/cheap-price", async (req, res) => {
         }
 
         if (searchDate) {
+          console.log("all Events", allEvents);
+          console.log("Server Time:", new Date().toString());
+
           const filteredEvents = allEvents
             .filter((event) => {
-              const eventDate = new Date(
-                event.formattedDate + ", " + new Date().getFullYear()
-              );
+              // Assume event.formattedDate is in a format like "December 13"
+              const eventDate = moment.tz(`${event.formattedDate}, ${new Date().getFullYear()}`, "MMMM D, YYYY", "America/New_York").toDate();
               return eventDate >= searchDate;
             })
             .sort((a, b) => {
-              const dateA = new Date(
-                a.formattedDate + ", " + new Date().getFullYear()
-              );
-              const dateB = new Date(
-                b.formattedDate + ", " + new Date().getFullYear()
-              );
+              const dateA = moment.tz(`${a.formattedDate}, ${new Date().getFullYear()}`, "MMMM D, YYYY", "America/New_York").toDate();
+              const dateB = moment.tz(`${b.formattedDate}, ${new Date().getFullYear()}`, "MMMM D, YYYY", "America/New_York").toDate();
               return dateA - dateB;
             });
 
+          console.log("filtered Events", filteredEvents);
+
           if (filteredEvents.length > 0) {
-          
             const resultUrl = filteredEvents[0].url;
 
-           
             const resultHtmlResponse = await axios.get(resultUrl);
             const result$ = cheerio.load(resultHtmlResponse.data);
             const resultScriptContent = result$("script#index-data")
               .html()
               .trim();
-
             if (resultScriptContent) {
               let resultParsedData;
               try {
@@ -215,16 +204,17 @@ app.get("/cheap-price", async (req, res) => {
               }
 
               const resultCleanData = cleanJson(resultParsedData);
-           
-              console.log(resultCleanData)
-              return res.json({"Min Price": resultCleanData.grid.formattedMinPrice, "Max Price": resultCleanData.grid.formattedMaxPrice});
+
+              return res.json({
+                "Min Price": resultCleanData.grid.formattedMinPrice,
+                "Max Price": resultCleanData.grid.formattedMaxPrice,
+              });
             } else {
               return res
                 .status(404)
                 .send("Script tag with id='index-data' not found in event URL");
             }
           } else {
-            console.log(parsedData)
             return res
               .status(404)
               .send("No events found on or after the specified date");
@@ -241,11 +231,10 @@ app.get("/cheap-price", async (req, res) => {
       return res.status(404).send("No results found");
     }
   } catch (error) {
-    console.error(error);
+    console.error("Error occurred while fetching data:", error);
     return res.status(500).send("An error occurred");
   }
 });
-
 
 app.get("/fetch-ticket", async (req, res) => {
   const { url } = req.query;
