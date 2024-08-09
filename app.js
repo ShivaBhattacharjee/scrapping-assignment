@@ -146,6 +146,7 @@ app.get("/cheap-price", async (req, res) => {
       const htmlResponse = await axios.get(url);
       const $ = cheerio.load(htmlResponse.data);
       const scriptContent = $("script#index-data").html().trim();
+      console.log("scriptContent", scriptContent);
       if (scriptContent) {
         let parsedData;
         try {
