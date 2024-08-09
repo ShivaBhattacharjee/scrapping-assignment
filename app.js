@@ -2,11 +2,12 @@ import express from "express";
 import axios from "axios";
 import NodeCache from "node-cache";
 import cheerio from "cheerio";
-
+import morgan from "morgan";
 const app = express();
 const cache = new NodeCache({ stdTTL: 600 });
 
 app.use(express.json());
+app.use(morgan("dev"));
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
@@ -113,6 +114,7 @@ app.get("/fetch-ticket", async (req, res) => {
     res.status(500).send("An error occurred");
   }
 });
+
 function cleanJson(data) {
   if (typeof data !== "object" || data === null) return data;
 
@@ -122,6 +124,16 @@ function cleanJson(data) {
     "footer",
     "categorySummary",
     "header",
+    "ticketClasses",
+    "sellerListingNotes",
+    "ticketTypeGroups",
+    "topSellingSectionIds",
+    "geoJsonMetadata",
+    "listingInfoBySection",
+    "listingInfoByTicketClass",
+    "histogram",
+    "highDemandMessage",
+    "listingComplianceDisplayStrategy",
   ];
 
   if (Array.isArray(data)) {
