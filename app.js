@@ -115,7 +115,7 @@ app.get("/cheap-price", async (req, res) => {
       }
     );
     
-    console.log("Search results: " + JSON.stringify(response.data));
+    // console.log("Search results: " + JSON.stringify(response.data));
     
     if (
       response.data &&
@@ -146,7 +146,7 @@ app.get("/cheap-price", async (req, res) => {
         topResult = topPerformerGroup.results.results[0];
       }
       const url = `https://www.stubhub.com${topResult.url}`;
-      console.log(`Fetching additional data from: ${url}`);
+      // console.log(`Fetching additional data from: ${url}`);
 
 
       const htmlResponse = await axios.get(url);
