@@ -90,6 +90,12 @@ app.get("/fetch-ticket", async (req, res) => {
     return res.status(400).send("URL parameter is required");
   }
 
+  const cacheKey = `fetch-ticket-${url}`;
+  const cachedResponse = cache.get(cacheKey);
+  if (cachedResponse) {
+    return res.json(cachedResponse);
+  }
+
   try {
     const response = await axios.get(`https://www.stubhub.com${url}`);
     const $ = cheerio.load(response.data);
@@ -104,6 +110,7 @@ app.get("/fetch-ticket", async (req, res) => {
         return res.status(500).send("Failed to parse JSON from script content");
       }
       const cleanData = cleanJson(parsedData);
+      cache.set(cacheKey, cleanData);
 
       res.json(cleanData);
     } else {
