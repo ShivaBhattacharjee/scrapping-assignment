@@ -3,7 +3,6 @@ import axios from "axios";
 import NodeCache from "node-cache";
 import cheerio from "cheerio";
 import morgan from "morgan";
-import moment from "moment-timezone";
 const app = express();
 const cache = new NodeCache({ stdTTL: 600 });
 
@@ -206,6 +205,7 @@ app.get("/cheap-price", async (req, res) => {
               return res.json({
                 "Min Price": resultCleanData.grid.formattedMinPrice,
                 "Max Price": resultCleanData.grid.formattedMaxPrice,
+                "Event Date": resultCleanData.grid.formattedDate,
               });
             } else {
               return res
