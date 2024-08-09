@@ -4,7 +4,7 @@ import NodeCache from "node-cache";
 import cheerio from "cheerio";
 
 const app = express();
-const cache = new NodeCache({ stdTTL: 600 }); 
+const cache = new NodeCache({ stdTTL: 600 });
 
 app.use(express.json());
 
@@ -43,44 +43,43 @@ app.post("/search", async (req, res) => {
 });
 
 app.get("/info", async (req, res) => {
-    const { url } = req.query;
+  const { url } = req.query;
 
-    if (!url) {
-      return res.status(400).send("URL parameter is required");
-    }
+  if (!url) {
+    return res.status(400).send("URL parameter is required");
+  }
 
-    const cacheKey = `info-${url}`;
+  const cacheKey = `info-${url}`;
 
-    const cachedResponse = cache.get(cacheKey);
-    if (cachedResponse) {
-      return res.json(cachedResponse);
-    }
+  const cachedResponse = cache.get(cacheKey);
+  if (cachedResponse) {
+    return res.json(cachedResponse);
+  }
 
-    try {
-      const response = await axios.get(`https://www.stubhub.com${url}`);
-      const $ = cheerio.load(response.data);
-      const scriptContent = $('script#index-data').html().trim();
+  try {
+    const response = await axios.get(`https://www.stubhub.com${url}`);
+    const $ = cheerio.load(response.data);
+    const scriptContent = $("script#index-data").html().trim();
 
-      if (scriptContent) {
-        let parsedData;
-        try {
-          parsedData = JSON.parse(scriptContent);
-        } catch (error) {
-          console.error("Failed to parse JSON:", error);
-          return res.status(500).send("Failed to parse JSON from script content");
-        }
-        const cleanData = cleanJson(parsedData);
-        cache.set(cacheKey, cleanData);
-
-        res.json(cleanData);
-      } else {
-        res.status(404).send("Script tag with id='index-data' not found");
+    if (scriptContent) {
+      let parsedData;
+      try {
+        parsedData = JSON.parse(scriptContent);
+      } catch (error) {
+        console.error("Failed to parse JSON:", error);
+        return res.status(500).send("Failed to parse JSON from script content");
       }
+      const cleanData = cleanJson(parsedData);
+      cache.set(cacheKey, cleanData);
 
-    } catch (error) {
-      console.error(error);
-      res.status(500).send("An error occurred");
+      res.json(cleanData);
+    } else {
+      res.status(404).send("Script tag with id='index-data' not found");
     }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("An error occurred");
+  }
 });
 
 app.get("/fetch-ticket", async (req, res) => {
@@ -93,7 +92,7 @@ app.get("/fetch-ticket", async (req, res) => {
   try {
     const response = await axios.get(`https://www.stubhub.com${url}`);
     const $ = cheerio.load(response.data);
-    const scriptContent = $('script#index-data').html().trim();
+    const scriptContent = $("script#index-data").html().trim();
 
     if (scriptContent) {
       let parsedData;
@@ -109,16 +108,21 @@ app.get("/fetch-ticket", async (req, res) => {
     } else {
       res.status(404).send("Script tag with id='index-data' not found");
     }
-
   } catch (error) {
     console.error(error);
     res.status(500).send("An error occurred");
   }
 });
 function cleanJson(data) {
-  if (typeof data !== 'object' || data === null) return data;
+  if (typeof data !== "object" || data === null) return data;
 
-  const keysToRemove = ['profileUrl', 'marketplaceDisclosure', 'footer', 'categorySummary','header'];
+  const keysToRemove = [
+    "profileUrl",
+    "marketplaceDisclosure",
+    "footer",
+    "categorySummary",
+    "header",
+  ];
 
   if (Array.isArray(data)) {
     return data.map(cleanJson);
