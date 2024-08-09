@@ -95,7 +95,7 @@ app.get("/cheap-price", async (req, res) => {
 
   let searchDate;
   if (date) {
-    searchDate = moment(date).tz("America/New_York").toDate();
+    searchDate = new Date(date);
     if (isNaN(searchDate.getTime())) {
       return res
         .status(400)
@@ -145,8 +145,8 @@ app.get("/cheap-price", async (req, res) => {
 
       const htmlResponse = await axios.get(url);
       const $ = cheerio.load(htmlResponse.data);
+
       const scriptContent = $("script#index-data").html().trim();
-      console.log("scriptContent", scriptContent);
       if (scriptContent) {
         let parsedData;
         try {
@@ -168,22 +168,19 @@ app.get("/cheap-price", async (req, res) => {
         }
 
         if (searchDate) {
-          console.log("all Events", allEvents);
-          console.log("Server Time:", new Date().toString());
+          const currentYear = new Date().getFullYear();
 
           const filteredEvents = allEvents
             .filter((event) => {
               // Assume event.formattedDate is in a format like "December 13"
-              const eventDate = moment.tz(`${event.formattedDate}, ${new Date().getFullYear()}`, "MMMM D, YYYY", "America/New_York").toDate();
+              const eventDate = new Date(`${event.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`);
               return eventDate >= searchDate;
             })
             .sort((a, b) => {
-              const dateA = moment.tz(`${a.formattedDate}, ${new Date().getFullYear()}`, "MMMM D, YYYY", "America/New_York").toDate();
-              const dateB = moment.tz(`${b.formattedDate}, ${new Date().getFullYear()}`, "MMMM D, YYYY", "America/New_York").toDate();
+              const dateA = new Date(`${a.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`);
+              const dateB = new Date(`${b.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`);
               return dateA - dateB;
             });
-
-          console.log("filtered Events", filteredEvents);
 
           if (filteredEvents.length > 0) {
             const resultUrl = filteredEvents[0].url;
