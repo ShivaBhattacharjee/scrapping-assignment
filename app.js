@@ -103,11 +103,7 @@ app.get("/cheap-price", async (req, res) => {
     }
   }
 
-  const cacheKey = `${artist}-${date || "no-date"}`;
-  const cachedResponse = cache.get(cacheKey);
-  if (cachedResponse) {
-    return res.json(cachedResponse);
-  }
+
 
   try {
     const response = await axios.post(
@@ -118,18 +114,38 @@ app.get("/cheap-price", async (req, res) => {
         searchType: 2,
       }
     );
-
+    
+    console.log("Search results: " + JSON.stringify(response.data));
+    
     if (
       response.data &&
       response.data.resultsWithMetadata &&
-      response.data.resultsWithMetadata.length > 0 &&
-      response.data.resultsWithMetadata[0].results &&
-      response.data.resultsWithMetadata[0].results.results &&
-      response.data.resultsWithMetadata[0].results.results.length > 0
+      response.data.resultsWithMetadata.length > 0
     ) {
-      const topResult = response.data.resultsWithMetadata[0].results.results[0];
+      const topResultGroup = response.data.resultsWithMetadata.find(
+        (group) => group.results.desc === "Top Result"
+      );
+    
+      const topPerformerGroup = response.data.resultsWithMetadata.find(
+        (group) => group.results.desc === "Performers"
+      );
+    
+      let topResult;
+    
+      if (
+        topResultGroup &&
+        topResultGroup.results.results &&
+        topResultGroup.results.results.length > 0
+      ) {
+        topResult = topResultGroup.results.results[0];
+      } else if (
+        topPerformerGroup &&
+        topPerformerGroup.results.results &&
+        topPerformerGroup.results.results.length > 0
+      ) {
+        topResult = topPerformerGroup.results.results[0];
+      }
       const url = `https://www.stubhub.com${topResult.url}`;
-
       console.log(`Fetching additional data from: ${url}`);
 
 
@@ -199,7 +215,7 @@ app.get("/cheap-price", async (req, res) => {
               }
 
               const resultCleanData = cleanJson(resultParsedData);
-              cache.set(cacheKey, resultCleanData);
+           
               console.log(resultCleanData)
               return res.json({"Min Price": resultCleanData.grid.formattedMinPrice, "Max Price": resultCleanData.grid.formattedMaxPrice});
             } else {
@@ -208,12 +224,12 @@ app.get("/cheap-price", async (req, res) => {
                 .send("Script tag with id='index-data' not found in event URL");
             }
           } else {
+            console.log(parsedData)
             return res
               .status(404)
               .send("No events found on or after the specified date");
           }
         } else {
-          cache.set(cacheKey, cleanData);
           return res.json(cleanData);
         }
       } else {
@@ -229,6 +245,7 @@ app.get("/cheap-price", async (req, res) => {
     return res.status(500).send("An error occurred");
   }
 });
+
 
 app.get("/fetch-ticket", async (req, res) => {
   const { url } = req.query;
