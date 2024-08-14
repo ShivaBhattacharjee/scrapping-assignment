@@ -84,7 +84,6 @@ app.get("/info", async (req, res) => {
   }
 });
 
-
 app.get("/cheap-price", async (req, res) => {
   const { artist, date } = req.query;
 
@@ -98,7 +97,9 @@ app.get("/cheap-price", async (req, res) => {
     if (isNaN(searchDate.getTime())) {
       return res
         .status(400)
-        .send("Invalid date format. Please use ISO 8601 format (e.g., '2024-08-09T00:00:00Z')");
+        .send(
+          "Invalid date format. Please use ISO 8601 format (e.g., '2024-08-09T00:00:00Z')"
+        );
     }
   }
 
@@ -172,12 +173,18 @@ app.get("/cheap-price", async (req, res) => {
           const filteredEvents = allEvents
             .filter((event) => {
               // Assume event.formattedDate is in a format like "December 13"
-              const eventDate = new Date(`${event.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`);
+              const eventDate = new Date(
+                `${event.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`
+              );
               return eventDate >= searchDate;
             })
             .sort((a, b) => {
-              const dateA = new Date(`${a.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`);
-              const dateB = new Date(`${b.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`);
+              const dateA = new Date(
+                `${a.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`
+              );
+              const dateB = new Date(
+                `${b.formattedDate} ${currentYear} 00:00:00 GMT-0500 (Eastern Standard Time)`
+              );
               return dateA - dateB;
             });
 
@@ -202,10 +209,30 @@ app.get("/cheap-price", async (req, res) => {
 
               const resultCleanData = cleanJson(resultParsedData);
 
+              console.log("Grid Structure:", resultCleanData.grid); // Add this line to log the structure
+
+              let priceWithFeesList = [];
+              if (resultCleanData.grid && resultCleanData.grid.items) {
+                priceWithFeesList = resultCleanData.grid.items
+                  .map((item) => item.priceWithFees)
+                  .filter((price) => price !== undefined);
+              }
+
+              const numericPrices = priceWithFeesList.map((price) =>
+                parseFloat(price.replace(/[^\d.]/g, ""))
+              );
+
+              const minPriceWithFees = Math.min(...numericPrices);
+              const maxPriceWithFees = Math.max(...numericPrices);
+
+              const formatPrice = (price) => `${price.toLocaleString("en-IN")}`;
               return res.json({
+                minPriceWithFees : formatPrice(minPriceWithFees),
+                maxPriceWithFees : formatPrice(maxPriceWithFees),
                 "Min Price": resultCleanData.grid.formattedMinPrice,
                 "Max Price": resultCleanData.grid.formattedMaxPrice,
                 "Event Date": resultCleanData.grid.formattedDate,
+                priceWithFeesList,
               });
             } else {
               return res
